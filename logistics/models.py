@@ -57,6 +57,10 @@ class Product(models.Model):
     emergency_order_level = PositiveIntegerField(null=True, blank=True)
     type = models.ForeignKey('ProductType', db_index=True)
     equivalents = models.ManyToManyField('self', null=True, blank=True)
+    # this attribute is only used when LOGISTICS_STOCKED_BY = StockedBy.PRODUCT
+    # it indicates that this product needs to be reported by facilities (as opposed to
+    # products which we recognize but aren't required for reporting)
+    is_active = models.BooleanField(default=True, db_index=True)
     
     def __unicode__(self):
         return self.name
@@ -97,19 +101,19 @@ class SupplyPointType(models.Model):
     def monthly_consumption_by_product(self, product):
         # we need to supply a non-None cache value since the
         # actual value to store here will often be 'None'
-        NONE_VALUE = 'x'
+        _NONE_VALUE = 'x'
         cache_key = '%(sptype)s-%(product)s-default-monthly-consumption' % {'sptype':self.code, 
                                                                             'product':product.code}
         if settings.LOGISTICS_USE_SPOT_CACHING: 
             from_cache = cache.get(cache_key)
-            if from_cache != NONE_VALUE:
+            if from_cache != _NONE_VALUE:
                 return from_cache
         try:
             dmc = DefaultMonthlyConsumption.objects.get(product=product, supply_point_type=self).default_monthly_consumption
         except DefaultMonthlyConsumption.DoesNotExist:
             dmc = None
         if dmc is None:
-            cache.set(cache_key, NONE_VALUE, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)
+            cache.set(cache_key, _NONE_VALUE, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)
         else:
             cache.set(cache_key, dmc, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)
         return dmc 
@@ -221,7 +225,12 @@ class SupplyPointBase(models.Model, StockCacheMixin):
         return True
 
     def commodities_stocked(self):
-        return self.commodities_reported()
+        if settings.LOGISTICS_STOCKED_BY == settings.StockedBy.USER: 
+            return self.commodities_reported()
+        elif settings.LOGISTICS_STOCKED_BY == settings.StockedBy.FACILITY: 
+            return Product.objects.filter(productstock__supply_point=self).filter(is_active=True)
+        elif settings.LOGISTICS_STOCKED_BY == settings.StockedBy.PRODUCT: 
+            return Product.objects.filter(is_active=True)
     
     def commodities_reported(self):
         return Product.objects.filter(reported_by__supply_point=self).distinct()
@@ -520,7 +529,6 @@ class ProductStock(models.Model):
     
     @property
     def monthly_consumption(self):
-        
         if self.use_auto_consumption and self.auto_monthly_consumption:
             return self.auto_monthly_consumption
         return self._manual_consumption()
