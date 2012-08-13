@@ -14,11 +14,11 @@
 	{% for row in rows %}
 	    {% if row.is_active %}
 	    <tr>
-	    <td><a href="{{ row.url }}">{{ row.name }}</a></td>
-	    <td> {{ row.stockout_count }} {% ifnotequal row.stockout_count 0 %}<img src="{{ MEDIA_URL }}logistics/images/stockout.png" title="Stock out">{% endifnotequal %}</td>
-	    <td> {{ row.emergency_plus_low }} {% ifnotequal row.emergency_plus_low 0 %}<img src="{{ MEDIA_URL }}logistics/images/emergency.png" title="Emergency">{% endifnotequal %}</td>
-	    <td> {{ row.good_supply_count }} {% ifnotequal row.good_supply_count 0 %}<img src="{{ MEDIA_URL }}logistics/images/goodstock.png" title="Adequate supply">{% endifnotequal %}</td>
-	    <td> {{ row.overstocked_count }} {% ifnotequal row.overstocked_count 0 %}<img src="{{ MEDIA_URL }}logistics/images/overstock.png" title="Overstock">{% endifnotequal %}</td>
+	    <td><a href="{{ row.url }}">{{ row.name }}{{row.surfix}}</a></td>
+	    <td> {{ row.stockout_count }} {% ifnotequal row.type 'SupplyPoint' %} {% ifnotequal row.stockout_count 0 %}<img src="{{ MEDIA_URL }}logistics/images/stockout.png" title="Stock out">{% endifnotequal %} {% endifnotequal%}</td>
+	    <td> {% ifequal row.all_acts_isset 'False' %} {{ row.emergency_plus_low }} {% ifnotequal row.emergency_plus_low 0 %}<img src="{{ MEDIA_URL }}logistics/images/emergency.png" title="Emergency">{% endifnotequal %}{% else %} n/a {% endifequal %}</td>
+	    <td> {% ifequal row.all_acts_isset 'False' %} {{ row.good_supply_count }} {% ifnotequal row.good_supply_count 0 %}<img src="{{ MEDIA_URL }}logistics/images/goodstock.png" title="Adequate supply">{% endifnotequal %}{% else %} n/a {% endifequal %}</td>
+	    <td> {% ifequal row.all_acts_isset 'False' %} {{ row.overstocked_count }} {% ifnotequal row.overstocked_count 0 %}<img src="{{ MEDIA_URL }}logistics/images/overstock.png" title="Overstock">{% endifnotequal %}{% else %} n/a {% endifequal %}</td>
 	    <!-- The idea of 'consumption' only makes sense when talking about a specific commodity -->
 	    {% if commodity_filter %}<td scope="col" >{{ row.consumption|default_if_none:"n/a" }}</td>{% endif %}
 	    </tr>

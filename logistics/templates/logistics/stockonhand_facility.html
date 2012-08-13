@@ -23,7 +23,7 @@
         {% endif %}
         
         <div id="main">
-        <h2 id="report-title">Stock for {{ facility.name }}</h2>
+        <h2 id="report-title">Stock for {{ facility.name }} {{ surfix }}</h2>
 
         {% if facility.productstock_set.count %}
             {% if excel_export %}

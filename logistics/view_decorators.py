@@ -8,25 +8,29 @@ def filter_context(func):
     """
     def _new_func(request, *args, **kwargs):
         context = {}
-        
+
         # add commodities 
         context['commodities'] = Product.objects.all().order_by('name')
         context['commoditytypes'] = ProductType.objects.all().order_by('name')
-        
+
         commodity_filter = None
         commoditytype_filter = None
-    
+
         # add/set filters
-        if hasattr(request,'REQUEST'):
-            if 'commodity' in request.REQUEST and request.REQUEST['commodity'] != 'all':
+        if hasattr(request, 'REQUEST'):
+            if 'commodity' in request.REQUEST and request.REQUEST['commodity'] not in ('all', 'all_acts'):
                 commodity_filter = request.REQUEST['commodity']
                 commodity = Product.objects.get(sms_code=commodity_filter)
                 commoditytype_filter = commodity.type.code
-            elif 'commoditytype' in request.REQUEST and request.REQUEST['commoditytype'] != 'all':
+            elif 'commoditytype' in request.REQUEST and request.REQUEST['commoditytype'] not in ('all', 'all_acts'):
                 commoditytype_filter = request.REQUEST['commoditytype']
                 type = ProductType.objects.get(code=commoditytype_filter)
                 context['commodities'] = context['commodities'].filter(type=type)
-        
+            elif 'commodity' in request.REQUEST and request.REQUEST['commodity'] == 'all_acts':
+                #set field to check the All ACts
+                context['check_all_acts'] = 'True'
+                commodity_filter = 'all_acts'
+
         context['commodity_filter'] = commodity_filter
         context['commoditytype_filter'] = commoditytype_filter
 
@@ -34,7 +38,7 @@ def filter_context(func):
             kwargs['context'].update(context)
         else:
             kwargs['context'] = context
-        
+
         return func(request, *args, **kwargs)
     return _new_func
 

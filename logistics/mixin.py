@@ -33,8 +33,8 @@ class StockCacheMixin():
         other_count = 0
         for stock in stocks:
             if datespan and not datespan.is_default:
-                historical_stock = stock.supply_point.historical_stock_by_date(stock.product, 
-                                                                               datespan.end_of_end_day - timedelta(days=1), 
+                historical_stock = stock.supply_point.historical_stock_by_date(stock.product,
+                                                                               datespan.end_of_end_day - timedelta(days=1),
                                                                                default_value=None)
                 if historical_stock is not None:
                     stock.quantity = historical_stock
@@ -56,30 +56,34 @@ class StockCacheMixin():
                 adequate_supply_count = adequate_supply_count + 1
             if stock.is_overstocked():
                 overstocked_count = overstocked_count + 1
-        cache.set(self._cache_key('stocked_count', product, producttype, datespan), 
-                  stocked_count, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)       
-        cache.set(self._cache_key('other_count', product, producttype, datespan), 
-                  other_count, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)       
-        cache.set(self._cache_key('stockout_count', product, producttype, datespan), 
+        if product == 'all_acts':
+            #both SupplyPoint and Location have the property all_act_stockout_count
+            stockout_count = self.all_act_stockout_count
+            stocked_count = self.all_act_stocked_count
+        cache.set(self._cache_key('stocked_count', product, producttype, datespan),
+                  stocked_count, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)
+        cache.set(self._cache_key('other_count', product, producttype, datespan),
+                  other_count, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)
+        cache.set(self._cache_key('stockout_count', product, producttype, datespan),
                   stockout_count, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)
-        cache.set(self._cache_key('emergency_stock_count', product, producttype, datespan), 
-                  emergency_stock_count, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)       
-        cache.set(self._cache_key('low_stock_count', product, producttype, datespan), 
-                  low_stock_count, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)       
-        cache.set(self._cache_key('emergency_plus_low', product, producttype, datespan), 
-                  emergency_plus_low, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)       
-        cache.set(self._cache_key('good_supply_count', product, producttype, datespan), 
-                  good_supply_count, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)       
-        cache.set(self._cache_key('adequate_supply_count', product, producttype, datespan), 
-                  adequate_supply_count, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)       
-        cache.set(self._cache_key('overstocked_count', product, producttype, datespan), 
+        cache.set(self._cache_key('emergency_stock_count', product, producttype, datespan),
+                  emergency_stock_count, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)
+        cache.set(self._cache_key('low_stock_count', product, producttype, datespan),
+                  low_stock_count, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)
+        cache.set(self._cache_key('emergency_plus_low', product, producttype, datespan),
+                  emergency_plus_low, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)
+        cache.set(self._cache_key('good_supply_count', product, producttype, datespan),
+                  good_supply_count, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)
+        cache.set(self._cache_key('adequate_supply_count', product, producttype, datespan),
+                  adequate_supply_count, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)
+        cache.set(self._cache_key('overstocked_count', product, producttype, datespan),
                   overstocked_count, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)
         consumption = stocks.exclude(manual_monthly_consumption=None).aggregate(consumption=Sum('manual_monthly_consumption'))['consumption']
         # NB: we do not yet support historical consumption, 
         # since that's its own giant bag of worms
-        cache.set(self._cache_key('consumption', product, producttype, datespan), 
+        cache.set(self._cache_key('consumption', product, producttype, datespan),
                   consumption, settings.LOGISTICS_SPOT_CACHE_TIMEOUT)
-    
+
     def _get_stock_count_for_facilities(self, facilities, operation, product, producttype, datespan=None):
         """ 
         pulls requested stock value for a given set of facilities from the cache
@@ -100,8 +104,12 @@ class StockCacheMixin():
         """
         from logistics.models import ProductStock
         results = ProductStock.objects.filter(is_active=True)
+        if not product: product = 'all_acts'
         if product is not None:
-            results = results.filter(product__sms_code=product)
+            if product == 'all_acts':
+                results = results.filter(product__sms_code__in=['sp', 'tp', 'ep', 'fp'])
+            else:
+                results = results.filter(product__sms_code=product)
         elif producttype is not None:
             results = results.filter(product__type__code=producttype)
         return results

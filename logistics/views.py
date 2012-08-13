@@ -26,7 +26,7 @@ from email_reports.decorators import magic_token_required
 from logistics.charts import stocklevel_plot
 from logistics.decorators import place_in_request
 from logistics.models import ProductStock, \
-    ProductReportsHelper, ProductReport, LogisticsProfile,\
+    ProductReportsHelper, ProductReport, LogisticsProfile, \
     SupplyPoint, StockTransaction
 from logistics.util import config
 from logistics.view_decorators import filter_context, geography_context
@@ -45,17 +45,17 @@ def no_ie_allowed(request, template="logistics/no_ie_allowed.html"):
 def landing_page(request):
     if 'MSIE' in request.META['HTTP_USER_AGENT']:
         return no_ie_allowed(request)
-    
+
     if settings.LOGISTICS_LANDING_PAGE_VIEW:
         return HttpResponseRedirect(reverse(settings.LOGISTICS_LANDING_PAGE_VIEW))
-    
-    prof = None 
+
+    prof = None
     try:
         if not request.user.is_anonymous():
             prof = request.user.get_profile()
     except LogisticsProfile.DoesNotExist:
         pass
-    
+
     if prof and prof.supply_point:
         return stockonhand_facility(request, request.user.get_profile().supply_point.code)
     elif prof and prof.location:
@@ -136,6 +136,7 @@ def stockonhand_facility(request, facility_code, context={}, template="logistics
         context['last_reported'] = last_reports[0].report_date
         context['chart_data'] = stocklevel_plot(transactions)
     context['facility'] = facility
+    context['surfix'] = ' %s' % facility.type.name.upper()
     context["location"] = facility.location
     context["destination_url"] = "aggregate"
     return render_to_response(
@@ -174,7 +175,7 @@ def facilities_by_product(request, location_code, context={}, template="logistic
 @filter_context
 @magic_token_required()
 @datespan_in_request(default_days=settings.LOGISTICS_REPORTING_CYCLE_IN_DAYS)
-def reporting(request, location_code=None, context={}, template="logistics/reporting.html", 
+def reporting(request, location_code=None, context={}, template="logistics/reporting.html",
               destination_url="reporting"):
     """ which facilities have reported on time and which haven't """
     if location_code is None:
@@ -194,14 +195,14 @@ def reporting(request, location_code=None, context={}, template="logistics/repor
 def navigate(request):
     location_code = settings.COUNTRY
     destination = "logistics_dashboard"
-    if 'location' in request.REQUEST and request.REQUEST['location']: 
+    if 'location' in request.REQUEST and request.REQUEST['location']:
         location_code = request.REQUEST['location']
-    if 'destination_url' in request.REQUEST and request.REQUEST['destination_url']: 
+    if 'destination_url' in request.REQUEST and request.REQUEST['destination_url']:
         destination = request.REQUEST['destination_url']
     mode = request.REQUEST.get("mode", "url")
     if mode == "url":
         return HttpResponseRedirect(
-            reverse(destination, args=(location_code, )))
+            reverse(destination, args=(location_code,)))
     elif mode == "param":
         return HttpResponseRedirect(
             "%s?place=%s" % (reverse(destination), location_code))
@@ -236,7 +237,7 @@ def aggregate(request, location_code=None, context={}, template="logistics/aggre
     where 'children' can either be sub-regions
     OR facilities if no sub-region exists
     """
-    
+
     # default to the whole country
     if location_code is None:
         location_code = settings.COUNTRY
@@ -258,23 +259,27 @@ def _get_rows_from_children(children, commodity_filter, commoditytype_filter, da
         row['name'] = child.name
         row['code'] = child.code
         if isinstance(child, SupplyPoint):
-            row['url'] = reverse('stockonhand_facility', args=[child.code])
+            row['url'] = reverse('stockonhand_facility', args=[child.code]) + '?commodity=all_acts'
+            row['type'] = 'SupplyPoint'
+            row['surfix'] = ' %s' % child.type.name.upper()
         else:
-            row['url'] = reverse('logistics_dashboard', args=[child.code])
-        row['stockout_count'] = child.stockout_count(product=commodity_filter, 
-                                                     producttype=commoditytype_filter, 
+            row['url'] = reverse('logistics_dashboard', args=[child.code]) + '?commodity=all_acts'
+            row['type'] = 'Location'
+        row['stockout_count'] = child.stockout_count(product=commodity_filter,
+                                                     producttype=commoditytype_filter,
                                                      datespan=datespan)
-        row['emergency_plus_low'] = child.emergency_plus_low(product=commodity_filter, 
-                                                     producttype=commoditytype_filter, 
+        row['emergency_plus_low'] = child.emergency_plus_low(product=commodity_filter,
+                                                     producttype=commoditytype_filter,
                                                      datespan=datespan)
-        row['good_supply_count'] = child.good_supply_count(product=commodity_filter, 
-                                                     producttype=commoditytype_filter, 
+        row['good_supply_count'] = child.good_supply_count(product=commodity_filter,
+                                                     producttype=commoditytype_filter,
                                                      datespan=datespan)
-        row['overstocked_count'] = child.overstocked_count(product=commodity_filter, 
-                                                     producttype=commoditytype_filter, 
+        row['overstocked_count'] = child.overstocked_count(product=commodity_filter,
+                                                     producttype=commoditytype_filter,
                                                      datespan=datespan)
+        row['all_acts_isset'] = 'True' if commodity_filter == 'all_acts' else 'False'
         if commodity_filter is not None:
-            row['consumption'] = child.consumption(product=commodity_filter, 
+            row['consumption'] = child.consumption(product=commodity_filter,
                                                    producttype=commoditytype_filter)
         rows.append(row)
     return rows
@@ -291,26 +296,26 @@ def export_reporting(request, location_code=None):
         location_code = settings.COUNTRY
     location = get_object_or_404(Location, code=location_code)
     queryset = ProductReport.objects.filter(supply_point__location__in=location.get_descendants(include_self=True))\
-      .select_related("supply_point__name", "supply_point__location__parent__name", 
-                      "supply_point__location__parent__parent__name", 
+      .select_related("supply_point__name", "supply_point__location__parent__name",
+                      "supply_point__location__parent__parent__name",
                       "product__name", "report_type__name", "message__text").order_by('report_date')
     response = HttpResponse(mimetype=mimetype_map.get(format, 'application/octet-stream'))
     response['Content-Disposition'] = 'attachment; filename=reporting.xls'
     writer = csv.writer(response)
-    writer.writerow(['ID', 'Location Grandparent', 'Location Parent', 'Facility', 
-                     'Commodity', 'Report Type', 
-                     'Quantity', 'Date',  'Message'])
+    writer.writerow(['ID', 'Location Grandparent', 'Location Parent', 'Facility',
+                     'Commodity', 'Report Type',
+                     'Quantity', 'Date', 'Message'])
     for q in queryset:
         parent = q.supply_point.location.parent.name if q.supply_point.location.parent else None
         grandparent = q.supply_point.location.parent.parent.name if q.supply_point.location.parent.parent else None
         message = q.message.text if q.message else None
-        writer.writerow([q.id, 
-                         grandparent, 
-                         parent, 
-                         q.supply_point.name, 
-                         q.product.name, q.report_type.name, 
+        writer.writerow([q.id,
+                         grandparent,
+                         parent,
+                         q.supply_point.name,
+                         q.product.name, q.report_type.name,
                          q.quantity, q.report_date, message])
-    return response    
+    return response
 
 def export_stockonhand(request, facility_code, format='xls', filename='stockonhand'):
     class ProductReportDataset(ModelDataset):
@@ -409,9 +414,9 @@ def district_dashboard(request, template="logistics/district_dashboard.html"):
         #request.location = districts[0]
     else:
         facilities = request.location.all_child_facilities()
-    report = ReportingBreakdown(facilities, 
-                                DateSpan.since(settings.LOGISTICS_DAYS_UNTIL_LATE_PRODUCT_REPORT), 
-                                days_for_late = settings.LOGISTICS_DAYS_UNTIL_LATE_PRODUCT_REPORT)
+    report = ReportingBreakdown(facilities,
+                                DateSpan.since(settings.LOGISTICS_DAYS_UNTIL_LATE_PRODUCT_REPORT),
+                                days_for_late=settings.LOGISTICS_DAYS_UNTIL_LATE_PRODUCT_REPORT)
     return render_to_response(template,
                               {"reporting_data": report,
                                "graph_width": 200,
@@ -443,7 +448,7 @@ def messages_by_carrier(request, template="logistics/messages_by_carrier.html"):
     backends = list(Backend.objects.all())
     counts = {}
     mdates = []
-    d = datetime(year, month, 1) + relativedelta(months=1)-relativedelta(seconds=1)
+    d = datetime(year, month, 1) + relativedelta(months=1) - relativedelta(seconds=1)
     while d <= datetime.utcnow() + relativedelta(months=1):
         mdates += [d]
         counts[d] = {}

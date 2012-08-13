@@ -17,7 +17,7 @@ class Location(models.Model, StockCacheMixin):
         abstract = True
 
     def set_parent(self, parent):
-        if hasattr(self,'tree_parent'):
+        if hasattr(self, 'tree_parent'):
             self.tree_parent = parent
         else:
             self.parent = parent
@@ -71,8 +71,8 @@ class Location(models.Model, StockCacheMixin):
         from logistics.models import SupplyPoint
         # rl: is there a better way to do this?
         if 'mptt' in settings.INSTALLED_APPS:
-            return SupplyPoint.objects.filter(Q(location=self)|Q(location__tree_parent=self), active=True).order_by('name')
-        return SupplyPoint.objects.filter(Q(location=self)|Q(location__parent_id=self.pk), active=True).order_by('name')
+            return SupplyPoint.objects.filter(Q(location=self) | Q(location__tree_parent=self), active=True).order_by('name')
+        return SupplyPoint.objects.filter(Q(location=self) | Q(location__parent_id=self.pk), active=True).order_by('name')
 
     def facilities(self):
         from logistics.models import SupplyPoint
@@ -146,3 +146,15 @@ class Location(models.Model, StockCacheMixin):
         self.code = new_code
         self.is_active = False
         self.save()
+    @property
+    def all_act_stockout_count(self):
+        from logistics.models import ActStock
+        toret = ActStock.objects.filter(supply_point_id__in=self.all_facilities().\
+                                        values_list('id', flat=True), sum=0).values('sum').count()
+        return toret
+    @property
+    def all_act_stocked_count(self):
+        from logistics.models import ActStock
+        toret = ActStock.objects.filter(supply_point_id__in=self.all_facilities().\
+                                        values_list('id', flat=True), sum__gt=0).values('supply_point_id').count()
+        return toret

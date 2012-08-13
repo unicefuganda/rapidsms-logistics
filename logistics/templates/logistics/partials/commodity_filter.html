@@ -24,6 +24,10 @@
     <input class="product_list" type="radio" name="commodity" value="all"
         {% if not commoditytype_filter %}checked{% endif %}
     >{% trans "All" %}<br>
+    <input class="product_list" type="radio" name="commodity" value="all_acts"
+        {% ifequal check_all_acts "True" %}checked{% endifequal %} 
+        {#{% if not commoditytype_filter %}checked{% endif %}#}
+    >{% trans "All ACTs" %}<br>
     {% for commodity in commodities %}
     <input class="product_list" type="radio" name="commodity" value="{{ commodity.sms_code }}"
         {% ifequal commodity_filter commodity.sms_code %}checked{% endifequal %}

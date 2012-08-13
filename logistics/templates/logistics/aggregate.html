@@ -5,14 +5,14 @@
 {% endblock %}
 
 {% load i18n %}
-{% load logistics_report_tags %}
+
 
 {% block content %}
     <div class="module">
         {% include "logistics/partials/breadcrumbs.html" %}
         {% include "logistics/partials/date_selector_form.html" %}
         <div id="main">
-            <h2 id="report-title"> {{ location.name }} {% trans "Aggregate Stock Report" %}
+            <h2 id="report-title"> {{ location.name }} {{surfix}} {% trans "Aggregate Stock Report" %}
             
             {% if commodity_filter %}
 	            >> {% commodity_code_to_name commodity_filter%}
