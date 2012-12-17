@@ -7,27 +7,10 @@ from django.db import models
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        
-        # Adding model 'DefaultMonthlyConsumption'
-        db.create_table('logistics_defaultmonthlyconsumption', (
-            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('supply_point_type', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['logistics.SupplyPointType'])),
-            ('product', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['logistics.Product'])),
-            ('default_monthly_consumption', self.gf('django.db.models.fields.PositiveIntegerField')(default=None, null=True, blank=True)),
-        ))
-        db.send_create_signal('logistics', ['DefaultMonthlyConsumption'])
-
-        # Adding unique constraint on 'DefaultMonthlyConsumption', fields ['supply_point_type', 'product']
-        db.create_unique('logistics_defaultmonthlyconsumption', ['supply_point_type_id', 'product_id'])
+        pass
 
     def backwards(self, orm):
-        
-        # Removing unique constraint on 'DefaultMonthlyConsumption', fields ['supply_point_type', 'product']
-        db.delete_unique('logistics_defaultmonthlyconsumption', ['supply_point_type_id', 'product_id'])
-
-        # Deleting model 'DefaultMonthlyConsumption'
-        db.delete_table('logistics_defaultmonthlyconsumption')
-
+        pass
 
     models = {
         'auth.group': {

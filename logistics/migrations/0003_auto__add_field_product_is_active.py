@@ -7,14 +7,10 @@ from django.db import models
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        
-        # Adding field 'Product.is_active'
-        db.add_column('logistics_product', 'is_active', self.gf('django.db.models.fields.BooleanField')(default=True, db_index=True), keep_default=False)
+        pass
 
     def backwards(self, orm):
-
-        # Deleting field 'Product.is_active'
-        db.delete_column('logistics_product', 'is_active')
+        pass
 
 
     models = {
